@@ -1,0 +1,1503 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SFTP Secure Service — Terminal de Acceso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg-deep: #050508;
+  --bg-panel: #0a0a10;
+  --bg-card: #0e0e16;
+  --bg-input: #08080e;
+  --border-dim: #1a1a28;
+  --border-active: #2ecc71;
+  --text-primary: #e0e0e8;
+  --text-secondary: #6a6a80;
+  --text-muted: #3a3a50;
+  --accent-green: #2ecc71;
+  --accent-green-dim: #1a7a42;
+  --accent-red: #e74c3c;
+  --accent-orange: #f39c12;
+  --accent-blue: #3498db;
+  --accent-cyan: #00d4aa;
+  --glow-green: rgba(46, 204, 113, 0.15);
+  --glow-red: rgba(231, 76, 60, 0.15);
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', monospace;
+  --font-display: 'Space Grotesk', sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── Scan Lines Effect ── */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Background Grid ── */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image:
+    radial-gradient(circle at 20% 50%, rgba(46,204,113,0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(52,152,219,0.02) 0%, transparent 50%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ── Header ── */
+.header {
+  border-bottom: 1px solid var(--border-dim);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-panel);
+}
+
+.header-logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.header-logo .shield {
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--accent-green);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  color: var(--accent-green);
+  animation: pulse-border 3s ease-in-out infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: var(--accent-green); box-shadow: 0 0 8px var(--glow-green); }
+  50% { border-color: var(--accent-green-dim); box-shadow: none; }
+}
+
+.header-logo h1 {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: var(--accent-green);
+}
+
+.header-logo .subtitle {
+  font-size: 10px;
+  color: var(--text-secondary);
+  letter-spacing: 2px;
+  margin-top: 2px;
+}
+
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+.status-dot.online { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
+.status-dot.offline { background: var(--accent-red); }
+
+.btn-logout {
+  background: none;
+  border: 1px solid var(--border-dim);
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: none;
+}
+.btn-logout:hover {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+
+/* ── Main Container ── */
+.main-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+
+/* ── Views / Screens ── */
+.view { display: none; }
+.view.active { display: block; animation: fadeIn 0.4s ease; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.card-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.card-header .icon {
+  font-size: 18px;
+}
+
+.card-header h2 {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: var(--text-primary);
+}
+
+.card-header .step-badge {
+  margin-left: auto;
+  background: var(--bg-input);
+  border: 1px solid var(--border-dim);
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 10px;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+}
+
+.card-body {
+  padding: 24px;
+}
+
+/* ── Form Elements ── */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-label {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.form-input:focus {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 0 3px var(--glow-green);
+}
+
+.form-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.25s;
+  text-transform: uppercase;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent-green-dim), var(--accent-green));
+  color: #fff;
+  box-shadow: 0 4px 20px var(--glow-green);
+}
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 30px rgba(46, 204, 113, 0.3);
+}
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-secondary {
+  background: var(--bg-input);
+  border: 1px solid var(--border-dim);
+  color: var(--text-primary);
+}
+.btn-secondary:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
+}
+
+.btn-danger {
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
+}
+.btn-danger:hover {
+  background: rgba(231, 76, 60, 0.2);
+}
+
+.btn-block { width: 100%; }
+
+/* ── QR Code Area ── */
+.qr-container {
+  text-align: center;
+  padding: 24px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.qr-container img {
+  width: 200px;
+  height: 200px;
+  border-radius: 8px;
+  border: 2px solid var(--accent-green);
+  image-rendering: pixelated;
+}
+
+.qr-label {
+  font-size: 10px;
+  color: var(--text-secondary);
+  letter-spacing: 1px;
+  margin-top: 12px;
+}
+
+/* ── TOTP Input ── */
+.totp-input-group {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+.totp-digit {
+  width: 48px;
+  height: 58px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  background: var(--bg-input);
+  border: 2px solid var(--border-dim);
+  border-radius: 8px;
+  color: var(--accent-green);
+  font-family: var(--font-mono);
+  outline: none;
+  transition: all 0.2s;
+}
+
+.totp-digit:focus {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 0 3px var(--glow-green);
+}
+
+/* ── Alert Boxes ── */
+.alert {
+  padding: 14px 18px;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 16px;
+  display: none;
+  line-height: 1.6;
+}
+
+.alert.visible { display: block; animation: fadeIn 0.3s ease; }
+
+.alert-error {
+  background: var(--glow-red);
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
+}
+
+.alert-success {
+  background: var(--glow-green);
+  border: 1px solid var(--accent-green);
+  color: var(--accent-green);
+}
+
+.alert-warning {
+  background: rgba(243, 156, 18, 0.1);
+  border: 1px solid var(--accent-orange);
+  color: var(--accent-orange);
+}
+
+/* ── Dashboard Grid ── */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+
+.action-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 28px 24px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: center;
+}
+
+.action-card:hover {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 30px var(--glow-green);
+  transform: translateY(-3px);
+}
+
+.action-card .action-icon {
+  font-size: 32px;
+  margin-bottom: 14px;
+}
+
+.action-card h3 {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.action-card p {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* ── File List ── */
+.file-list {
+  list-style: none;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-dim);
+  transition: background 0.2s;
+  gap: 14px;
+}
+
+.file-item:last-child { border-bottom: none; }
+.file-item:hover { background: rgba(46, 204, 113, 0.03); }
+
+.file-item .file-icon { font-size: 18px; }
+
+.file-item .file-info {
+  flex: 1;
+}
+
+.file-item .file-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.file-item .file-meta {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+}
+
+.file-item .file-hash {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+
+/* ── Ticket Display ── */
+.ticket-display {
+  background: var(--bg-deep);
+  border: 2px dashed var(--accent-green);
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  margin: 20px 0;
+}
+
+.ticket-display .ticket-id {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-green);
+  word-break: break-all;
+  margin: 12px 0;
+  padding: 12px;
+  background: var(--bg-card);
+  border-radius: 4px;
+  border: 1px solid var(--border-dim);
+}
+
+.ticket-display .ticket-ttl {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent-orange);
+  margin: 8px 0;
+}
+
+/* ── Receipt Display ── */
+.receipt-box {
+  background: var(--bg-deep);
+  border: 1px solid var(--accent-green);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 16px 0;
+  font-size: 11px;
+  line-height: 1.8;
+}
+
+.receipt-box .receipt-row {
+  display: flex;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.receipt-box .receipt-label {
+  color: var(--text-secondary);
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.receipt-box .receipt-value {
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.receipt-box .receipt-value.hash {
+  color: var(--accent-orange);
+  font-size: 10px;
+}
+
+.receipt-box .receipt-value.sig {
+  color: var(--accent-blue);
+  font-size: 9px;
+  max-height: 60px;
+  overflow: hidden;
+}
+
+/* ── Compromised Alert ── */
+.compromised-alert {
+  background: linear-gradient(135deg, rgba(231,76,60,0.1), rgba(231,76,60,0.05));
+  border: 2px solid var(--accent-red);
+  border-radius: 8px;
+  padding: 28px;
+  text-align: center;
+  animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.compromised-alert h3 {
+  color: var(--accent-red);
+  font-size: 16px;
+  letter-spacing: 3px;
+  margin-bottom: 12px;
+}
+
+/* ── Loading Spinner ── */
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border-dim);
+  border-top-color: var(--accent-green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Progress Steps ── */
+.steps-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 30px;
+}
+
+.step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--border-dim);
+  transition: all 0.3s;
+}
+
+.step-dot.active {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+  box-shadow: 0 0 8px var(--glow-green);
+}
+
+.step-dot.completed {
+  background: var(--accent-green-dim);
+  border-color: var(--accent-green-dim);
+}
+
+.step-line {
+  width: 40px;
+  height: 2px;
+  background: var(--border-dim);
+}
+
+.step-line.completed { background: var(--accent-green-dim); }
+
+/* ── Drop Zone ── */
+.drop-zone {
+  border: 2px dashed var(--border-dim);
+  border-radius: 8px;
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-bottom: 20px;
+}
+
+.drop-zone:hover,
+.drop-zone.dragover {
+  border-color: var(--accent-green);
+  background: var(--glow-green);
+}
+
+.drop-zone .drop-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.drop-zone p {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ── Terminal Log ── */
+.terminal-log {
+  background: #000;
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  padding: 16px;
+  font-size: 11px;
+  line-height: 1.8;
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 16px 0;
+}
+
+.terminal-log .log-line {
+  color: var(--text-secondary);
+}
+
+.terminal-log .log-line.success { color: var(--accent-green); }
+.terminal-log .log-line.error { color: var(--accent-red); }
+.terminal-log .log-line.warning { color: var(--accent-orange); }
+.terminal-log .log-line .timestamp { color: var(--text-muted); }
+
+/* ── Utility ── */
+.text-center { text-align: center; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.mb-16 { margin-bottom: 16px; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════ HEADER ════════════════════════ -->
+<header class="header">
+  <div class="header-logo">
+    <div class="shield">🔐</div>
+    <div>
+      <h1>SFTP SECURE</h1>
+      <div class="subtitle">TERMINAL DE ACCESO SEGURO</div>
+    </div>
+  </div>
+  <div class="header-status">
+    <span><span class="status-dot online" id="statusDot"></span><span id="statusText">SISTEMA OPERATIVO</span></span>
+    <span id="userDisplay" style="display:none; color: var(--accent-green);"></span>
+    <button class="btn-logout" id="btnLogout" onclick="doLogout()">CERRAR SESIÓN</button>
+  </div>
+</header>
+
+<div class="main-container">
+
+  <!-- ════════════ VIEW: LOGIN (Step 1) ════════════ -->
+  <div id="viewLogin" class="view active">
+    <div class="steps-indicator">
+      <div class="step-dot active"></div>
+      <div class="step-line"></div>
+      <div class="step-dot"></div>
+      <div class="step-line"></div>
+      <div class="step-dot"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="icon">🏢</span>
+        <h2>AUTENTICACIÓN LDAP</h2>
+        <span class="step-badge">PASO 1 / 2</span>
+      </div>
+      <div class="card-body">
+        <div id="loginAlert" class="alert alert-error"></div>
+        <div class="form-group">
+          <label class="form-label">Identificador de Usuario (UID)</label>
+          <input type="text" id="inputUsername" class="form-input" placeholder="uid del directorio LDAP" autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contraseña</label>
+          <input type="password" id="inputPassword" class="form-input" placeholder="••••••••" autocomplete="current-password">
+        </div>
+        <button class="btn btn-primary btn-block" id="btnLogin" onclick="doLogin()">
+          AUTENTICAR CONTRA LDAP
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════ VIEW: MFA (Step 2) ════════════ -->
+  <div id="viewMFA" class="view">
+    <div class="steps-indicator">
+      <div class="step-dot completed"></div>
+      <div class="step-line completed"></div>
+      <div class="step-dot active"></div>
+      <div class="step-line"></div>
+      <div class="step-dot"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="icon">📱</span>
+        <h2>VERIFICACIÓN MFA — TOTP</h2>
+        <span class="step-badge">PASO 2 / 2</span>
+      </div>
+      <div class="card-body">
+        <div id="mfaAlert" class="alert alert-error"></div>
+
+        <div class="qr-container">
+          <img id="qrImage" src="" alt="QR Code TOTP">
+          <div class="qr-label">ESCANEE CON GOOGLE AUTHENTICATOR / AUTHY</div>
+        </div>
+
+        <label class="form-label text-center" style="margin-bottom:14px;">INTRODUZCA EL CÓDIGO DE 6 DÍGITOS</label>
+        <div class="totp-input-group">
+          <input type="text" maxlength="1" class="totp-digit" data-idx="0" inputmode="numeric">
+          <input type="text" maxlength="1" class="totp-digit" data-idx="1" inputmode="numeric">
+          <input type="text" maxlength="1" class="totp-digit" data-idx="2" inputmode="numeric">
+          <input type="text" maxlength="1" class="totp-digit" data-idx="3" inputmode="numeric">
+          <input type="text" maxlength="1" class="totp-digit" data-idx="4" inputmode="numeric">
+          <input type="text" maxlength="1" class="totp-digit" data-idx="5" inputmode="numeric">
+        </div>
+
+        <button class="btn btn-primary btn-block" id="btnVerifyMFA" onclick="doVerifyMFA()">
+          VERIFICAR CÓDIGO
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════ VIEW: DASHBOARD ════════════ -->
+  <div id="viewDashboard" class="view">
+    <div class="steps-indicator">
+      <div class="step-dot completed"></div>
+      <div class="step-line completed"></div>
+      <div class="step-dot completed"></div>
+      <div class="step-line completed"></div>
+      <div class="step-dot active"></div>
+    </div>
+
+    <div id="dashAlert" class="alert"></div>
+
+    <div class="dashboard-grid">
+      <div class="action-card" onclick="showUploadView()">
+        <div class="action-icon">📤</div>
+        <h3>SUBIR FICHERO</h3>
+        <p>Solicitar ticket OTP y subir un fichero al servidor SFTP seguro</p>
+      </div>
+      <div class="action-card" onclick="showDownloadView()">
+        <div class="action-icon">📥</div>
+        <h3>DESCARGAR FICHERO</h3>
+        <p>Verificar integridad y descargar un fichero con registro digital</p>
+      </div>
+      <div class="action-card" onclick="showFilesView()">
+        <div class="action-icon">📁</div>
+        <h3>MIS FICHEROS</h3>
+        <p>Listar ficheros almacenados con sus recibos digitales</p>
+      </div>
+      <div class="action-card" onclick="showVerifyView()">
+        <div class="action-icon">🔍</div>
+        <h3>VERIFICAR INTEGRIDAD</h3>
+        <p>Comprobar el hash y firma digital de un fichero almacenado</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════ VIEW: UPLOAD ════════════ -->
+  <div id="viewUpload" class="view">
+    <div class="card">
+      <div class="card-header">
+        <span class="icon">📤</span>
+        <h2>SUBIR FICHERO — TICKET OTP</h2>
+        <span class="step-badge" style="cursor:pointer" onclick="showDashboard()">← VOLVER</span>
+      </div>
+      <div class="card-body">
+        <div id="uploadAlert" class="alert"></div>
+
+        <!-- Step A: Get Ticket -->
+        <div id="uploadStepTicket">
+          <p style="font-size:12px;color:var(--text-secondary);margin-bottom:20px;">
+            Se generará un ticket de un solo uso (OTP) válido durante 5 minutos para autorizar la subida.
+          </p>
+          <button class="btn btn-primary btn-block" onclick="requestUploadTicket()">
+            SOLICITAR TICKET DE SUBIDA
+          </button>
+        </div>
+
+        <!-- Step B: Upload File -->
+        <div id="uploadStepFile" class="hidden">
+          <div class="ticket-display">
+            <div style="font-size:10px;color:var(--text-secondary);letter-spacing:2px;">TICKET OTP ACTIVO</div>
+            <div class="ticket-id" id="uploadTicketId"></div>
+            <div class="ticket-ttl" id="uploadTTL"></div>
+            <div style="font-size:10px;color:var(--text-secondary);">TIEMPO RESTANTE</div>
+          </div>
+
+          <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+            <div class="drop-icon">📄</div>
+            <p>Arrastre un fichero aquí o haga clic para seleccionar</p>
+            <p id="selectedFileName" style="color:var(--accent-green);margin-top:8px;display:none;"></p>
+          </div>
+          <input type="file" id="fileInput" style="display:none" onchange="onFileSelected(this)">
+
+          <button class="btn btn-primary btn-block" id="btnUpload" onclick="doUpload()" disabled>
+            SUBIR FICHERO
+          </button>
+        </div>
+
+        <!-- Step C: Receipt -->
+        <div id="uploadStepReceipt" class="hidden">
+          <div class="alert alert-success visible">✅ Fichero subido correctamente. Registro digital generado.</div>
+
+          <div id="uploadReceipt" class="receipt-box"></div>
+
+          <div class="terminal-log" id="uploadLog"></div>
+
+          <button class="btn btn-secondary btn-block mt-16" onclick="showDashboard()">
+            VOLVER AL PANEL
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════ VIEW: DOWNLOAD ════════════ -->
+  <div id="viewDownload" class="view">
+    <div class="card">
+      <div class="card-header">
+        <span class="icon">📥</span>
+        <h2>DESCARGAR FICHERO — VERIFICACIÓN</h2>
+        <span class="step-badge" style="cursor:pointer" onclick="showDashboard()">← VOLVER</span>
+      </div>
+      <div class="card-body">
+        <div id="downloadAlert" class="alert"></div>
+
+        <div id="downloadStepSelect">
+          <div class="form-group">
+            <label class="form-label">Nombre del Fichero</label>
+            <input type="text" id="downloadFilename" class="form-input" placeholder="ejemplo: informe_q4.pdf">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hash SHA-512 (Registro Digital de Entrada)</label>
+            <textarea id="downloadHash" class="form-input" rows="3" placeholder="Pegue aquí el hash SHA-512 del recibo de subida" style="resize:vertical;"></textarea>
+          </div>
+          <button class="btn btn-primary btn-block" onclick="requestDownloadTicket()">
+            SOLICITAR TICKET Y VERIFICAR
+          </button>
+        </div>
+
+        <div id="downloadStepProgress" class="hidden">
+          <div class="terminal-log" id="downloadLog"></div>
+        </div>
+
+        <div id="downloadCompromised" class="hidden">
+          <div class="compromised-alert">
+            <h3>⛔ FICHERO COMPROMETIDO</h3>
+            <p style="color:var(--accent-red);font-size:12px;margin:12px 0;">
+              La verificación de integridad ha fallado. El fichero puede haber sido alterado.
+            </p>
+            <div id="compromisedDetails" style="text-align:left;font-size:11px;color:var(--text-secondary);margin-top:16px;"></div>
+          </div>
+          <button class="btn btn-secondary btn-block mt-24" onclick="showDashboard()">VOLVER AL PANEL</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════ VIEW: FILES ════════════ -->
+  <div id="viewFiles" class="view">
+    <div class="card">
+      <div class="card-header">
+        <span class="icon">📁</span>
+        <h2>MIS FICHEROS</h2>
+        <span class="step-badge" style="cursor:pointer" onclick="showDashboard()">← VOLVER</span>
+      </div>
+      <div class="card-body">
+        <div id="filesAlert" class="alert"></div>
+        <ul class="file-list" id="fileList">
+          <li style="padding:20px;text-align:center;color:var(--text-secondary);font-size:12px;">
+            <span class="spinner"></span> Cargando ficheros...
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════ VIEW: VERIFY ════════════ -->
+  <div id="viewVerify" class="view">
+    <div class="card">
+      <div class="card-header">
+        <span class="icon">🔍</span>
+        <h2>VERIFICAR INTEGRIDAD</h2>
+        <span class="step-badge" style="cursor:pointer" onclick="showDashboard()">← VOLVER</span>
+      </div>
+      <div class="card-body">
+        <div id="verifyAlert" class="alert"></div>
+        <div class="form-group">
+          <label class="form-label">Nombre del Fichero</label>
+          <input type="text" id="verifyFilename" class="form-input" placeholder="nombre_fichero.ext">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hash SHA-512 a Verificar</label>
+          <textarea id="verifyHash" class="form-input" rows="3" placeholder="Hash SHA-512" style="resize:vertical;"></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="doVerify()">
+          VERIFICAR INTEGRIDAD
+        </button>
+        <div id="verifyResult" class="hidden mt-24"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  SFTP Secure Service — Client Application
+// ═══════════════════════════════════════════════════════════
+
+const API = '/api';
+let authToken = null;
+let preMfaToken = null;
+let currentUser = null;
+let activeTicket = null;
+let ticketTimer = null;
+let selectedFile = null;
+
+// ── API Helper ────────────────────────────────────────────
+
+async function apiCall(endpoint, options = {}) {
+  const headers = options.headers || {};
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`;
+  }
+
+  const response = await fetch(`${API}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    const data = await response.json();
+    if (!response.ok) {
+      throw { status: response.status, ...data };
+    }
+    return data;
+  }
+
+  if (!response.ok) {
+    throw { status: response.status, error: 'Error de servidor' };
+  }
+  return response;
+}
+
+// ── View Navigation ───────────────────────────────────────
+
+function showView(viewId) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  const el = document.getElementById(viewId);
+  if (el) el.classList.add('active');
+}
+
+function showDashboard() {
+  clearInterval(ticketTimer);
+  showView('viewDashboard');
+  loadFiles(true); // preload
+}
+
+function showUploadView() {
+  showView('viewUpload');
+  document.getElementById('uploadStepTicket').classList.remove('hidden');
+  document.getElementById('uploadStepFile').classList.add('hidden');
+  document.getElementById('uploadStepReceipt').classList.add('hidden');
+  hideAlert('uploadAlert');
+  selectedFile = null;
+}
+
+function showDownloadView() {
+  showView('viewDownload');
+  document.getElementById('downloadStepSelect').classList.remove('hidden');
+  document.getElementById('downloadStepProgress').classList.add('hidden');
+  document.getElementById('downloadCompromised').classList.add('hidden');
+  hideAlert('downloadAlert');
+}
+
+function showFilesView() {
+  showView('viewFiles');
+  loadFiles();
+}
+
+function showVerifyView() {
+  showView('viewVerify');
+  document.getElementById('verifyResult').classList.add('hidden');
+  hideAlert('verifyAlert');
+}
+
+// ── Alert Helpers ─────────────────────────────────────────
+
+function showAlert(id, message, type = 'error') {
+  const el = document.getElementById(id);
+  el.className = `alert alert-${type} visible`;
+  el.textContent = message;
+}
+
+function hideAlert(id) {
+  const el = document.getElementById(id);
+  el.className = 'alert';
+}
+
+// ── TOTP Digit Inputs ─────────────────────────────────────
+
+document.querySelectorAll('.totp-digit').forEach(input => {
+  input.addEventListener('input', function() {
+    const val = this.value.replace(/\D/g, '');
+    this.value = val;
+    if (val && this.dataset.idx < 5) {
+      const next = document.querySelector(`.totp-digit[data-idx="${+this.dataset.idx + 1}"]`);
+      if (next) next.focus();
+    }
+  });
+
+  input.addEventListener('keydown', function(e) {
+    if (e.key === 'Backspace' && !this.value && this.dataset.idx > 0) {
+      const prev = document.querySelector(`.totp-digit[data-idx="${+this.dataset.idx - 1}"]`);
+      if (prev) { prev.focus(); prev.value = ''; }
+    }
+    if (e.key === 'Enter') {
+      doVerifyMFA();
+    }
+  });
+
+  // Handle paste
+  input.addEventListener('paste', function(e) {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '');
+    document.querySelectorAll('.totp-digit').forEach((inp, i) => {
+      inp.value = text[i] || '';
+    });
+    const last = document.querySelector('.totp-digit[data-idx="5"]');
+    if (last) last.focus();
+  });
+});
+
+// ── Phase 1: Login ────────────────────────────────────────
+
+async function doLogin() {
+  const username = document.getElementById('inputUsername').value.trim();
+  const password = document.getElementById('inputPassword').value;
+
+  if (!username || !password) {
+    showAlert('loginAlert', 'Introduzca usuario y contraseña');
+    return;
+  }
+
+  const btn = document.getElementById('btnLogin');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> AUTENTICANDO...';
+
+  try {
+    const data = await apiCall('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+
+    preMfaToken = data.pre_mfa_token;
+    currentUser = data.user;
+
+    // Show QR
+    document.getElementById('qrImage').src = `data:image/png;base64,${data.qr_code}`;
+
+    showView('viewMFA');
+    document.querySelector('.totp-digit[data-idx="0"]').focus();
+
+  } catch (err) {
+    showAlert('loginAlert', err.error || 'Error de autenticación');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'AUTENTICAR CONTRA LDAP';
+  }
+}
+
+// Enter key on password
+document.getElementById('inputPassword').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ── Phase 2: Verify MFA ───────────────────────────────────
+
+function getTOTPCode() {
+  return Array.from(document.querySelectorAll('.totp-digit'))
+    .map(i => i.value).join('');
+}
+
+async function doVerifyMFA() {
+  const code = getTOTPCode();
+  if (code.length !== 6) {
+    showAlert('mfaAlert', 'Introduzca el código completo de 6 dígitos');
+    return;
+  }
+
+  const btn = document.getElementById('btnVerifyMFA');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> VERIFICANDO...';
+
+  try {
+    const data = await apiCall('/auth/verify-mfa', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        pre_mfa_token: preMfaToken,
+        totp_code: code,
+      }),
+    });
+
+    authToken = data.token;
+    currentUser = data.user;
+
+    // Update UI
+    document.getElementById('userDisplay').style.display = 'inline';
+    document.getElementById('userDisplay').textContent = `⬡ ${currentUser.cn || currentUser.uid}`;
+    document.getElementById('btnLogout').style.display = 'inline-block';
+
+    showView('viewDashboard');
+
+  } catch (err) {
+    showAlert('mfaAlert', err.error || 'Código MFA inválido');
+    document.querySelectorAll('.totp-digit').forEach(i => i.value = '');
+    document.querySelector('.totp-digit[data-idx="0"]').focus();
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'VERIFICAR CÓDIGO';
+  }
+}
+
+// ── Upload Flow ───────────────────────────────────────────
+
+async function requestUploadTicket() {
+  try {
+    const data = await apiCall('/tickets/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ operation: 'upload' }),
+    });
+
+    activeTicket = data;
+    document.getElementById('uploadTicketId').textContent = data.ticket_id;
+    document.getElementById('uploadStepTicket').classList.add('hidden');
+    document.getElementById('uploadStepFile').classList.remove('hidden');
+
+    // Start countdown
+    let ttl = data.ttl_seconds;
+    document.getElementById('uploadTTL').textContent = `${ttl}s`;
+    clearInterval(ticketTimer);
+    ticketTimer = setInterval(() => {
+      ttl--;
+      document.getElementById('uploadTTL').textContent = `${ttl}s`;
+      if (ttl <= 0) {
+        clearInterval(ticketTimer);
+        showAlert('uploadAlert', 'Ticket expirado. Solicite uno nuevo.', 'warning');
+        document.getElementById('uploadStepFile').classList.add('hidden');
+        document.getElementById('uploadStepTicket').classList.remove('hidden');
+      }
+    }, 1000);
+
+  } catch (err) {
+    showAlert('uploadAlert', err.error || 'Error al generar ticket', 'error');
+  }
+}
+
+// File selection
+function onFileSelected(input) {
+  if (input.files.length > 0) {
+    selectedFile = input.files[0];
+    document.getElementById('selectedFileName').textContent = `✓ ${selectedFile.name} (${formatBytes(selectedFile.size)})`;
+    document.getElementById('selectedFileName').style.display = 'block';
+    document.getElementById('btnUpload').disabled = false;
+  }
+}
+
+// Drag & Drop
+const dropZone = document.getElementById('dropZone');
+if (dropZone) {
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) {
+      document.getElementById('fileInput').files = e.dataTransfer.files;
+      onFileSelected(document.getElementById('fileInput'));
+    }
+  });
+}
+
+async function doUpload() {
+  if (!selectedFile || !activeTicket) return;
+
+  const btn = document.getElementById('btnUpload');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> SUBIENDO...';
+
+  const formData = new FormData();
+  formData.append('ticket_id', activeTicket.ticket_id);
+  formData.append('file', selectedFile);
+
+  try {
+    const data = await apiCall('/sftp/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    clearInterval(ticketTimer);
+
+    // Show receipt
+    document.getElementById('uploadStepFile').classList.add('hidden');
+    document.getElementById('uploadStepReceipt').classList.remove('hidden');
+
+    const receipt = data.receipt;
+    document.getElementById('uploadReceipt').innerHTML = `
+      <div class="receipt-row"><span class="receipt-label">ID Recibo:</span><span class="receipt-value">${receipt.receipt_id}</span></div>
+      <div class="receipt-row"><span class="receipt-label">Fecha/Hora:</span><span class="receipt-value">${receipt.timestamp}</span></div>
+      <div class="receipt-row"><span class="receipt-label">Fichero:</span><span class="receipt-value" style="color:var(--accent-green)">${receipt.filename}</span></div>
+      <div class="receipt-row"><span class="receipt-label">Hash SHA-512:</span><span class="receipt-value hash">${receipt.file_hash}</span></div>
+      <div class="receipt-row"><span class="receipt-label">Firma RSA:</span><span class="receipt-value sig">${receipt.rsa_signature}</span></div>
+      <div class="receipt-row"><span class="receipt-label">Algoritmo:</span><span class="receipt-value">${receipt.signing_algorithm}</span></div>
+      <div class="receipt-row"><span class="receipt-label">Estado:</span><span class="receipt-value" style="color:var(--accent-green)">✅ ${receipt.integrity_status}</span></div>
+    `;
+
+    // Terminal log
+    const logEl = document.getElementById('uploadLog');
+    const now = new Date().toISOString();
+    logEl.innerHTML = `
+      <div class="log-line"><span class="timestamp">[${now}]</span> Ticket OTP validado y consumido</div>
+      <div class="log-line success"><span class="timestamp">[${now}]</span> Fichero recibido: ${receipt.filename}</div>
+      <div class="log-line"><span class="timestamp">[${now}]</span> Hash SHA-512 calculado: ${receipt.file_hash.substring(0,32)}...</div>
+      <div class="log-line"><span class="timestamp">[${now}]</span> Firma RSA-${receipt.rsa_key_size} generada (PSS-SHA512)</div>
+      <div class="log-line success"><span class="timestamp">[${now}]</span> Registro digital almacenado</div>
+      <div class="log-line success"><span class="timestamp">[${now}]</span> Notificación enviada por correo electrónico</div>
+    `;
+
+  } catch (err) {
+    showAlert('uploadAlert', err.error || 'Error al subir fichero', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = 'SUBIR FICHERO';
+  }
+}
+
+// ── Download Flow ─────────────────────────────────────────
+
+async function requestDownloadTicket() {
+  const filename = document.getElementById('downloadFilename').value.trim();
+  const hash = document.getElementById('downloadHash').value.trim();
+
+  if (!filename) {
+    showAlert('downloadAlert', 'Nombre de fichero requerido', 'error');
+    return;
+  }
+  if (!hash) {
+    showAlert('downloadAlert', 'Hash SHA-512 requerido para verificación', 'error');
+    return;
+  }
+
+  document.getElementById('downloadStepSelect').classList.add('hidden');
+  document.getElementById('downloadStepProgress').classList.remove('hidden');
+
+  const logEl = document.getElementById('downloadLog');
+  const now = () => new Date().toISOString();
+
+  logEl.innerHTML = `<div class="log-line"><span class="timestamp">[${now()}]</span> Solicitando ticket de descarga...</div>`;
+
+  try {
+    // Step 1: Get ticket
+    const ticketData = await apiCall('/tickets/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ operation: 'download', filename }),
+    });
+
+    logEl.innerHTML += `<div class="log-line success"><span class="timestamp">[${now()}]</span> Ticket OTP generado: ${ticketData.ticket_id.substring(0,16)}...</div>`;
+    logEl.innerHTML += `<div class="log-line"><span class="timestamp">[${now()}]</span> Verificando integridad del fichero...</div>`;
+
+    // Step 2: Download with hash verification
+    const response = await fetch(`${API}/sftp/download`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        ticket_id: ticketData.ticket_id,
+        file_hash: hash,
+      }),
+    });
+
+    if (!response.ok) {
+      const errData = await response.json();
+
+      if (errData.code === 'FILE_INTEGRITY_FAILURE') {
+        logEl.innerHTML += `<div class="log-line error"><span class="timestamp">[${now()}]</span> ⛔ INTEGRIDAD COMPROMETIDA - Hash no coincide</div>`;
+        logEl.innerHTML += `<div class="log-line error"><span class="timestamp">[${now()}]</span> Incidente abierto: ${errData.incident_id}</div>`;
+
+        document.getElementById('downloadCompromised').classList.remove('hidden');
+        document.getElementById('compromisedDetails').innerHTML = `
+          <p><strong>Incidente:</strong> ${errData.incident_id}</p>
+          <p><strong>Código:</strong> ${errData.code}</p>
+          <p style="margin-top:8px;">${errData.action}</p>
+        `;
+        return;
+      }
+
+      throw errData;
+    }
+
+    logEl.innerHTML += `<div class="log-line success"><span class="timestamp">[${now()}]</span> ✅ Hash verificado - Integridad confirmada</div>`;
+    logEl.innerHTML += `<div class="log-line success"><span class="timestamp">[${now()}]</span> ✅ Firma RSA verificada</div>`;
+    logEl.innerHTML += `<div class="log-line success"><span class="timestamp">[${now()}]</span> Descargando fichero...</div>`;
+
+    // Trigger download
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    logEl.innerHTML += `<div class="log-line success"><span class="timestamp">[${now()}]</span> ✅ Fichero descargado correctamente</div>`;
+
+    setTimeout(() => {
+      logEl.innerHTML += `<br><div class="log-line" style="color:var(--accent-green);">[COMPLETADO] Transferencia segura finalizada</div>`;
+    }, 500);
+
+  } catch (err) {
+    logEl.innerHTML += `<div class="log-line error"><span class="timestamp">[${now()}]</span> ERROR: ${err.error || 'Error desconocido'}</div>`;
+    showAlert('downloadAlert', err.error || 'Error en la descarga', 'error');
+  }
+}
+
+// ── File Listing ──────────────────────────────────────────
+
+async function loadFiles(silent = false) {
+  const listEl = document.getElementById('fileList');
+  if (!silent) {
+    listEl.innerHTML = '<li style="padding:20px;text-align:center;color:var(--text-secondary);font-size:12px;"><span class="spinner"></span> Cargando...</li>';
+  }
+
+  try {
+    const data = await apiCall('/sftp/files');
+    if (data.files.length === 0) {
+      listEl.innerHTML = '<li style="padding:20px;text-align:center;color:var(--text-secondary);font-size:12px;">No hay ficheros almacenados</li>';
+      return;
+    }
+
+    listEl.innerHTML = data.files.map(f => `
+      <li class="file-item">
+        <span class="file-icon">📄</span>
+        <div class="file-info">
+          <div class="file-name">${f.filename}</div>
+          <div class="file-meta">${formatBytes(f.size)} · Subido: ${f.uploaded_at !== 'N/A' ? new Date(f.uploaded_at).toLocaleString('es-ES') : 'N/A'}</div>
+          <div class="file-hash">SHA-512: ${f.hash_preview}</div>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);">${f.receipt_id !== 'N/A' ? f.receipt_id.substring(0,8) + '...' : ''}</div>
+      </li>
+    `).join('');
+
+  } catch (err) {
+    if (!silent) {
+      listEl.innerHTML = `<li style="padding:20px;text-align:center;color:var(--accent-red);font-size:12px;">Error: ${err.error || 'No se pudieron cargar los ficheros'}</li>`;
+    }
+  }
+}
+
+// ── Verify Integrity ──────────────────────────────────────
+
+async function doVerify() {
+  const filename = document.getElementById('verifyFilename').value.trim();
+  const hash = document.getElementById('verifyHash').value.trim();
+
+  if (!filename || !hash) {
+    showAlert('verifyAlert', 'Fichero y hash son requeridos', 'error');
+    return;
+  }
+
+  try {
+    const data = await apiCall('/sftp/verify-receipt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename, file_hash: hash }),
+    });
+
+    const resultEl = document.getElementById('verifyResult');
+    resultEl.classList.remove('hidden');
+
+    const isOk = data.status === 'INTEGRITY_VERIFIED';
+    resultEl.innerHTML = `
+      <div style="background:${isOk ? 'var(--glow-green)' : 'var(--glow-red)'};border:1px solid ${isOk ? 'var(--accent-green)' : 'var(--accent-red)'};border-radius:8px;padding:20px;">
+        <h3 style="color:${isOk ? 'var(--accent-green)' : 'var(--accent-red)'};font-size:14px;letter-spacing:2px;margin-bottom:12px;">
+          ${isOk ? '✅ INTEGRIDAD VERIFICADA' : '⛔ FALLO DE INTEGRIDAD'}
+        </h3>
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;">${data.message}</p>
+        <div style="font-size:11px;line-height:1.8;">
+          <div>Hash coincide: ${data.hash_matches ? '✅' : '❌'}</div>
+          <div>Firma válida: ${data.signature_valid ? '✅' : '❌'}</div>
+          <div>Fichero sin modificar: ${data.file_unmodified ? '✅' : '❌'}</div>
+        </div>
+      </div>
+    `;
+
+  } catch (err) {
+    showAlert('verifyAlert', err.error || 'Error en la verificación', 'error');
+  }
+}
+
+// ── Logout ────────────────────────────────────────────────
+
+async function doLogout() {
+  try {
+    await apiCall('/auth/logout', { method: 'POST' });
+  } catch (e) { /* ignore */ }
+
+  authToken = null;
+  preMfaToken = null;
+  currentUser = null;
+  document.getElementById('userDisplay').style.display = 'none';
+  document.getElementById('btnLogout').style.display = 'none';
+  document.getElementById('inputPassword').value = '';
+  document.querySelectorAll('.totp-digit').forEach(i => i.value = '');
+  showView('viewLogin');
+}
+
+// ── Utilities ─────────────────────────────────────────────
+
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+// ── Startup Health Check ──────────────────────────────────
+
+async function checkHealth() {
+  try {
+    const data = await apiCall('/health');
+    if (data.redis === 'up' && data.ldap === 'up') {
+      document.getElementById('statusDot').className = 'status-dot online';
+      document.getElementById('statusText').textContent = 'SISTEMA OPERATIVO';
+    } else {
+      document.getElementById('statusDot').className = 'status-dot offline';
+      document.getElementById('statusText').textContent = 'SERVICIO DEGRADADO';
+    }
+  } catch (e) {
+    document.getElementById('statusDot').className = 'status-dot offline';
+    document.getElementById('statusText').textContent = 'SIN CONEXIÓN';
+  }
+}
+
+checkHealth();
+setInterval(checkHealth, 30000);
+</script>
+</body>
+</html>

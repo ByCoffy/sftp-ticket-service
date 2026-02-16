@@ -1,0 +1,52 @@
+##############################################################################
+# SFTP Secure Service — LDAP Directory Bootstrap
+# Users: ou=users,dc=sftp,dc=secure,dc=local
+##############################################################################
+
+# ── Organizational Unit ──
+dn: ou=users,dc=sftp,dc=secure,dc=local
+objectClass: organizationalUnit
+ou: users
+description: SFTP Service Users
+
+# ── Sample User: admin ──
+dn: uid=admin,ou=users,dc=sftp,dc=secure,dc=local
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+uid: admin
+cn: Administrador SFTP
+sn: Admin
+mail: admin@secure.local
+userPassword: {SSHA}admin_password_will_be_set_by_init_script
+employeeNumber: 001
+description: System Administrator
+
+# ── Sample User: operador ──
+dn: uid=operador,ou=users,dc=sftp,dc=secure,dc=local
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+uid: operador
+cn: Operador de Ficheros
+sn: Operador
+mail: operador@secure.local
+userPassword: {SSHA}operator_password_will_be_set_by_init_script
+employeeNumber: 002
+description: File Operator
+
+# ── Sample User: auditor ──
+dn: uid=auditor,ou=users,dc=sftp,dc=secure,dc=local
+objectClass: inetOrgPerson
+objectClass: organizationalPerson
+objectClass: person
+objectClass: top
+uid: auditor
+cn: Auditor de Seguridad
+sn: Auditor
+mail: auditor@secure.local
+userPassword: {SSHA}auditor_password_will_be_set_by_init_script
+employeeNumber: 003
+description: Security Auditor
