@@ -48,7 +48,7 @@ services:
       - LDAP_USERS_DN=ou=users,dc=sftp,dc=secure,dc=local
       - LDAP_ADMIN_DN=cn=admin,dc=sftp,dc=secure,dc=local
       - LDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD:-admin_secret_change_me}
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://:mIW7hAgTEsschY9vHzn1rSBWmfRpmP@redis:6379/0
       - SFTP_STORAGE_PATH=/data/sftp-storage
       - SMTP_HOST=mailhog
       - SMTP_PORT=1025
@@ -82,6 +82,7 @@ services:
   openldap:
     image: osixia/openldap:1.5.0
     container_name: sftp-openldap
+    command: --copy-service
     environment:
       - LDAP_ORGANISATION=SFTP Secure Service
       - LDAP_DOMAIN=sftp.secure.local
@@ -92,14 +93,14 @@ services:
     volumes:
       - ldap-data:/var/lib/ldap
       - ldap-config:/etc/ldap/slapd.d
-      - ./docker/ldap/bootstrap.ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom/01-bootstrap.ldif:ro
+      - ./docker/ldap/bootstrap.ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom/01-bootstrap.ldif
     ports:
       - "389:389"
     restart: unless-stopped
     networks:
       - sftp-network
     healthcheck:
-      test: ["CMD", "ldapsearch", "-x", "-H", "ldap://localhost", "-b", "dc=sftp,dc=secure,dc=local"]
+      test: ["CMD-SHELL", "ldapsearch -x -H ldap://localhost -s base || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
