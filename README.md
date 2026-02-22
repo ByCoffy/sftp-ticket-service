@@ -30,7 +30,7 @@ Sistema de transferencia segura de ficheros con autenticación MFA y tickets de 
 ## Instalación
 
 ```bash
-git clone <tu-repo> sftp-ticket-service
+git clone ByCoffy sftp-ticket-service
 cd sftp-ticket-service
 
 chmod +x scripts/init.sh
@@ -54,9 +54,7 @@ Para producción usar `./scripts/init.sh --prod` con certificados reales.
 
 Todo se configura en el fichero `.env` que genera `init.sh`. Copia `.env.example` si quieres crearlo a mano:
 
-```bash
 cp .env.example .env
-```
 
 Variables principales:
 
