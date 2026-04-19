@@ -30,7 +30,7 @@ Sistema de transferencia segura de ficheros con autenticación MFA y tickets de 
 ## Instalación
 
 ```bash
-git clone <tu-repo> sftp-ticket-service
+git clone https://github.com/ByCoffy/sftp-ticket-service
 cd sftp-ticket-service
 
 chmod +x scripts/init.sh
