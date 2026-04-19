@@ -47,7 +47,7 @@ services:
       - LDAP_USERS_DN=ou=users,dc=sftp,dc=secure,dc=local
       - LDAP_ADMIN_DN=cn=admin,dc=sftp,dc=secure,dc=local
       - LDAP_ADMIN_PASSWORD=${LDAP_ADMIN_PASSWORD:-admin_secret_change_me}
-      - REDIS_URL=redis://:mIW7hAgTEsschY9vHzn1rSBWmfRpmP@redis:6379/0
+      - REDIS_URL=redis://:${REDIS_PASSWORD:-redis_secret_change_me}@redis:6379/0
       - SFTP_STORAGE_PATH=/data/sftp-storage
       - SMTP_HOST=mailhog
       - SMTP_PORT=1025
