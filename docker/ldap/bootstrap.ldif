@@ -19,7 +19,7 @@ uid: admin
 cn: Administrador SFTP
 sn: Admin
 mail: admin@secure.local
-userPassword: {SSHA}admin_password_will_be_set_by_init_script
+userPassword: Admin.SFTP.2024!
 employeeNumber: 001
 description: System Administrator
 
@@ -33,7 +33,7 @@ uid: operador
 cn: Operador de Ficheros
 sn: Operador
 mail: operador@secure.local
-userPassword: {SSHA}operator_password_will_be_set_by_init_script
+userPassword: Operador.SFTP.2024!
 employeeNumber: 002
 description: File Operator
 
@@ -47,6 +47,6 @@ uid: auditor
 cn: Auditor de Seguridad
 sn: Auditor
 mail: auditor@secure.local
-userPassword: {SSHA}auditor_password_will_be_set_by_init_script
+userPassword: Auditor.SFTP.2024!
 employeeNumber: 003
 description: Security Auditor
